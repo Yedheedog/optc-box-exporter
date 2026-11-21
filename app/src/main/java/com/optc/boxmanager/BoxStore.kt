@@ -4,6 +4,10 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.UUID
 import java.security.MessageDigest
 
@@ -210,6 +214,19 @@ class BoxStore(context: Context) {
                 })
             })
         }
-        indexFile.writeText(array.toString(2))
+        val temporary = File(root, "profiles.json.tmp")
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(array.toString(2).toByteArray(Charsets.UTF_8))
+                output.fd.sync()
+            }
+            try {
+                Files.move(temporary.toPath(), indexFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(temporary.toPath(), indexFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            if (temporary.exists()) temporary.delete()
+        }
     }
 }
