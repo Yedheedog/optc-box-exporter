@@ -76,7 +76,7 @@ private fun BoxManagerScreen() {
                     ?.let { if (it == "jpeg") "jpg" else it } ?: "jpg"
                 val destination = File(
                     store.profileDirectory(profile.id),
-                    "screenshot_${System.currentTimeMillis()}_${index}.$extension"
+                    "screenshot_${java.util.UUID.randomUUID()}.$extension"
                 )
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     destination.outputStream().use { output -> input.copyTo(output) }
