@@ -49,7 +49,7 @@ object AuthProfileVault {
         val iv = cipher.iv
         val ciphertext = cipher.doFinal(plaintext)
         return ByteBuffer.allocate(1 + iv.size + ciphertext.size)
-            .put(1)
+            .put(1.toByte())
             .put(iv)
             .put(ciphertext)
             .array()
