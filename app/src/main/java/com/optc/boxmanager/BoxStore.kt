@@ -76,7 +76,7 @@ class BoxStore(context: Context) {
         val profiles = load()
         val profile = profiles.firstOrNull { it.id == profileId } ?: error("Box profile no longer exists.")
         val verifiedPortrait = portraitFileName?.let { name ->
-            require(name.matches(Regex("portrait_[A-Za-z0-9_-]{1,80}\\.png"))) {
+            require(name.matches(Regex("portrait_[A-Za-z0-9_-]{1,80}\\.(?:png|jpe?g)"))) {
                 "Invalid portrait crop filename."
             }
             val portraitDirectory = File(profileDirectory(profileId), "extracted_portraits").canonicalFile
@@ -156,7 +156,7 @@ class BoxStore(context: Context) {
     fun extractedPortraits(profileId: String): List<File> {
         val directory = File(profileDirectory(profileId), "extracted_portraits")
         return directory.listFiles()
-            ?.filter { it.isFile && it.extension.equals("png", ignoreCase = true) }
+            ?.filter { it.isFile && it.extension.lowercase() in setOf("png", "jpg", "jpeg") }
             ?.sortedBy { it.name }
             .orEmpty()
     }
