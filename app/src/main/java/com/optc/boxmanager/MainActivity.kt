@@ -57,7 +57,7 @@ private fun BoxManagerScreen() {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            runCatching { AuthProfileVault.import(context, uri) }
+            runCatching { AuthProfileVault.storeFromUri(context, uri) }
                 .onSuccess { authStatus = "Encrypted auth source stored separately from box profiles. Login adapter is not connected yet." }
                 .onFailure { authStatus = "Import failed: ${it.localizedMessage}" }
         }
