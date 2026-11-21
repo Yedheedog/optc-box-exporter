@@ -34,6 +34,11 @@ def find_characters_from_screenshot(
     global _character_reference
 
     characters = detect_characters(screenshot, image_size)
+    if characters is None or len(characters) == 0:
+        if return_thumbnails:
+            empty = np.empty((0, image_size[0], image_size[1], 3), dtype=np.uint8)
+            return [], empty
+        return []
     id_matches = find_characters_ids(characters, dist_method=dist_method)
 
     if _character_reference is None:
@@ -89,6 +94,11 @@ def find_characters_ids(characters: np.ndarray,
     if _portraits_paths is None:
         _portraits_paths = list(Path('data/Portraits').glob('*.png'))
 
+    if not _portraits_paths:
+        raise FileNotFoundError(
+            "No reference portraits found. Expected PNG files in data/Portraits."
+        )
+
     if image_size not in _portraits:
         _portraits[image_size] = np.array(
             [_load_im(o, image_size) for o in tqdm.tqdm(_portraits_paths)])
@@ -115,8 +125,8 @@ def _top_similarities(characters: np.ndarray,
 
     print('Computing distances...')
     if method == 'mse':
-        cd = characters.reshape(len(characters), 1, -1)
-        pd = portraits.reshape(1, len(portraits), -1)
+        cd = characters.astype(np.float32).reshape(len(characters), 1, -1)
+        pd = portraits.astype(np.float32).reshape(1, len(portraits), -1)
 
         distances = np.mean(np.square(cd - pd), -1)
         best_matches = np.argmax(-distances, -1)
