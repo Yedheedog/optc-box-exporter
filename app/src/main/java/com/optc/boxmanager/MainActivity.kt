@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -81,6 +83,7 @@ private fun BoxManagerScreen() {
     var selectedId by remember { mutableStateOf(profiles.firstOrNull()?.id) }
     var showCreate by remember { mutableStateOf(false) }
     var showScreenshotPicker by remember { mutableStateOf(false) }
+    var showAddCharacter by remember { mutableStateOf(false) }
     var cropScreenshot by remember { mutableStateOf<File?>(null) }
     var cropMessage by remember { mutableStateOf<String?>(null) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
@@ -231,6 +234,27 @@ private fun BoxManagerScreen() {
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Extract portrait from screenshot") }
                 Text("Saved offline screenshot portraits: ${savedCrops.size}")
+                if (referenceCount > 0) {
+                    OutlinedButton(onClick = { showAddCharacter = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Add character from reference catalogue")
+                    }
+                }
+                Text("Collection (${selected.characters.size} character IDs)", style = MaterialTheme.typography.titleMedium)
+                if (selected.characters.isEmpty()) {
+                    Text("No characters added yet. Recognition is not connected; catalogue entries can be added manually for now.")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(selected.characters.sortedBy { it.id }, key = { it.id }) { character ->
+                            val portrait = character.portraitFile?.let {
+                                File(File(store.profileDirectory(selected.id), "extracted_portraits"), it)
+                            }
+                            CharacterCollectionRow(character, portrait)
+                        }
+                    }
+                }
                 if (savedCrops.isNotEmpty()) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(savedCrops, key = { it.name }) { crop ->
@@ -261,6 +285,29 @@ private fun BoxManagerScreen() {
             showCreate = false
         }
     )
+
+    if (showAddCharacter && selected != null) {
+        AddCharacterDialog(
+            referenceStore = referenceStore,
+            referenceVersion = referenceCount,
+            portraitFiles = store.extractedPortraits(selected.id),
+            onDismiss = { showAddCharacter = false },
+            onAdd = { character, portraitName ->
+                showAddCharacter = false
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching { store.addCharacter(selected.id, character, portraitName) }
+                    }
+                    result.onSuccess {
+                        profiles = store.load()
+                        cropMessage = "Added ${character.name} (#${character.id}) to ${selected.name}."
+                    }.onFailure {
+                        cropMessage = "Could not add character: ${it.localizedMessage}"
+                    }
+                }
+            }
+        )
+    }
 
     if (showScreenshotPicker && selected != null) {
         AlertDialog(
@@ -309,6 +356,131 @@ private fun BoxManagerScreen() {
     }
 }
 
+
+
+@Composable
+private fun AddCharacterDialog(
+    referenceStore: CharacterReferenceStore,
+    referenceVersion: Int,
+    portraitFiles: List<File>,
+    onDismiss: () -> Unit,
+    onAdd: (CharacterReference, String?) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    var cropExpanded by remember { mutableStateOf(false) }
+    var selectedCrop by remember { mutableStateOf<String?>(null) }
+    val matches by produceState<List<CharacterReference>>(
+        initialValue = emptyList(),
+        key1 = query,
+        key2 = referenceVersion
+    ) {
+        value = withContext(Dispatchers.IO) { referenceStore.search(query, 80) }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add character to collection") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("Search name or character ID") },
+                    singleLine = true
+                )
+                OutlinedButton(
+                    onClick = { cropExpanded = true },
+                    enabled = portraitFiles.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(selectedCrop?.let { "Portrait crop: $it" } ?: "Portrait crop: none")
+                }
+                DropdownMenu(expanded = cropExpanded, onDismissRequest = { cropExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("No portrait crop") },
+                        onClick = { selectedCrop = null; cropExpanded = false }
+                    )
+                    portraitFiles.forEach { file ->
+                        DropdownMenuItem(
+                            text = { Text(file.name) },
+                            onClick = { selectedCrop = file.name; cropExpanded = false }
+                        )
+                    }
+                }
+                Text("Choose a character ID. Adding the same ID again increases its physical-copy quantity.")
+                LazyColumn(Modifier.heightIn(max = 300.dp)) {
+                    items(matches, key = { it.id }) { character ->
+                        TextButton(
+                            onClick = { onAdd(character, selectedCrop) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(character.name)
+                                Text("#${character.id} • ${character.type} • ${character.stars}")
+                            }
+                        }
+                    }
+                    if (query.isNotBlank() && matches.isEmpty()) {
+                        item { Text("No matching character IDs found.") }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+@Composable
+private fun CharacterCollectionRow(character: BoxCharacter, portraitFile: File?) {
+    val bitmap by produceState<Bitmap?>(initialValue = null, key1 = portraitFile?.absolutePath) {
+        value = if (portraitFile?.isFile == true) {
+            withContext(Dispatchers.IO) { BitmapFactory.decodeFile(portraitFile.absolutePath) }
+        } else null
+    }
+    DisposableEffect(bitmap) {
+        onDispose { bitmap?.takeIf { !it.isRecycled }?.recycle() }
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(Modifier.size(76.dp)) {
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap!!.asImageBitmap(),
+                        contentDescription = "Character ${character.id} portrait",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) { Text("No image", style = MaterialTheme.typography.labelSmall) }
+                }
+                if (character.quantity > 1) {
+                    Text(
+                        "×${character.quantity}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                            .background(Color.Black.copy(alpha = 0.85f), CircleShape)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(character.name, style = MaterialTheme.typography.titleSmall)
+                Text("#${character.id} • ${character.type} • ${character.stars}")
+                if (character.classes.isNotEmpty()) {
+                    Text(character.classes.joinToString(" / "), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun CropThumbnail(file: File) {
