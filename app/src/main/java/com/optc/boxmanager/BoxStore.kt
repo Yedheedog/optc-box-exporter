@@ -7,11 +7,22 @@ import java.io.File
 import java.util.UUID
 import java.security.MessageDigest
 
+data class BoxCharacter(
+    val id: Int,
+    val name: String,
+    val quantity: Int = 1,
+    val type: String = "",
+    val classes: List<String> = emptyList(),
+    val stars: String = "",
+    val portraitFile: String? = null
+)
+
 data class BoxProfile(
     val id: String,
     val name: String,
     val server: String,
-    val screenshots: List<String> = emptyList()
+    val screenshots: List<String> = emptyList(),
+    val characters: List<BoxCharacter> = emptyList()
 )
 
 class BoxStore(context: Context) {
@@ -25,11 +36,26 @@ class BoxStore(context: Context) {
             (0 until array.length()).map { i ->
                 val item = array.getJSONObject(i)
                 val shots = item.optJSONArray("screenshots") ?: JSONArray()
+                val characterArray = item.optJSONArray("characters") ?: JSONArray()
+                val characters = (0 until characterArray.length()).mapNotNull { index ->
+                    val character = characterArray.optJSONObject(index) ?: return@mapNotNull null
+                    val classArray = character.optJSONArray("classes") ?: JSONArray()
+                    BoxCharacter(
+                        id = character.optInt("characterId", -1),
+                        name = character.optString("name", "Unknown"),
+                        quantity = character.optInt("quantity", 1).coerceAtLeast(1),
+                        type = character.optString("type", ""),
+                        classes = (0 until classArray.length()).map { classArray.optString(it) },
+                        stars = character.optString("stars", ""),
+                        portraitFile = character.optString("portraitFile").takeIf { it.isNotBlank() && it != "null" }
+                    ).takeIf { it.id > 0 }
+                }
                 BoxProfile(
                     id = item.getString("id"),
                     name = item.getString("name"),
                     server = item.optString("server", "Global"),
-                    screenshots = (0 until shots.length()).map { shots.getString(it) }
+                    screenshots = (0 until shots.length()).map { shots.getString(it) },
+                    characters = characters
                 )
             }
         }.getOrDefault(emptyList())
@@ -40,6 +66,46 @@ class BoxStore(context: Context) {
         save(load() + profile)
         File(root, profile.id).mkdirs()
         return profile
+    }
+
+    fun addCharacter(profileId: String, reference: CharacterReference, portraitFileName: String? = null) {
+        val profiles = load()
+        val profile = profiles.firstOrNull { it.id == profileId } ?: error("Box profile no longer exists.")
+        val verifiedPortrait = portraitFileName?.let { name ->
+            require(name.matches(Regex("portrait_[A-Za-z0-9_-]{1,80}\\.png"))) {
+                "Invalid portrait crop filename."
+            }
+            val portraitDirectory = File(profileDirectory(profileId), "extracted_portraits").canonicalFile
+            val portrait = File(portraitDirectory, name).canonicalFile
+            require(portrait.isFile && portrait.path.startsWith(portraitDirectory.path + File.separator)) {
+                "The selected crop does not belong to this box profile."
+            }
+            name
+        }
+        val existing = profile.characters.firstOrNull { it.id == reference.id }
+        val updated = if (existing == null) {
+            profile.characters + BoxCharacter(
+                id = reference.id,
+                name = reference.name,
+                quantity = 1,
+                type = reference.type,
+                classes = reference.classes,
+                stars = reference.stars,
+                portraitFile = verifiedPortrait
+            )
+        } else {
+            profile.characters.map {
+                if (it.id == reference.id) it.copy(
+                    quantity = it.quantity + 1,
+                    name = reference.name,
+                    type = reference.type,
+                    classes = reference.classes,
+                    stars = reference.stars,
+                    portraitFile = verifiedPortrait ?: it.portraitFile
+                ) else it
+            }
+        }
+        save(profiles.map { if (it.id == profileId) it.copy(characters = updated) else it })
     }
 
     fun addScreenshots(profileId: String, files: List<File>): Int {
@@ -93,6 +159,19 @@ class BoxStore(context: Context) {
 
     fun exportJson(profile: BoxProfile): String {
         val screenshots = JSONArray().apply { profile.screenshots.forEach { put(it) } }
+        val characters = JSONArray().apply {
+            profile.characters.sortedBy { it.id }.forEach { character ->
+                put(JSONObject().apply {
+                    put("characterId", character.id)
+                    put("name", character.name)
+                    put("quantity", character.quantity)
+                    put("type", character.type)
+                    put("classes", JSONArray(character.classes))
+                    put("stars", character.stars)
+                    // Portrait files are omitted until export bundles include the image assets.
+                })
+            }
+        }
         return JSONObject().apply {
             put("schemaVersion", 1)
             put("application", "OPTC Box Manager")
@@ -100,9 +179,11 @@ class BoxStore(context: Context) {
                 put("name", profile.name)
                 put("server", profile.server)
             })
-            put("characters", JSONArray())
+            put("characters", characters)
             put("sourceScreenshots", screenshots)
-            put("notes", "Character recognition has not yet populated this collection.")
+            if (profile.characters.isEmpty()) {
+                put("notes", "Character recognition has not yet populated this collection.")
+            }
         }.toString(2)
     }
 
@@ -114,6 +195,19 @@ class BoxStore(context: Context) {
                 put("name", profile.name)
                 put("server", profile.server)
                 put("screenshots", JSONArray(profile.screenshots))
+                put("characters", JSONArray().apply {
+                    profile.characters.forEach { character ->
+                        put(JSONObject().apply {
+                            put("characterId", character.id)
+                            put("name", character.name)
+                            put("quantity", character.quantity)
+                            put("type", character.type)
+                            put("classes", JSONArray(character.classes))
+                            put("stars", character.stars)
+                            put("portraitFile", character.portraitFile)
+                        })
+                    }
+                })
             })
         }
         indexFile.writeText(array.toString(2))
