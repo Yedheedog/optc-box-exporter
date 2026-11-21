@@ -120,26 +120,65 @@ private fun BoxManagerScreen() {
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         val profile = profiles.firstOrNull { it.id == selectedId } ?: return@rememberLauncherForActivityResult
-        val copied = mutableListOf<File>()
-        uris.forEach { uri ->
-            runCatching {
-                val extension = context.contentResolver.getType(uri)
-                    ?.substringAfter('/', "jpg")
-                    ?.let { if (it == "jpeg") "jpg" else it } ?: "jpg"
-                val destination = File(
-                    store.profileDirectory(profile.id),
-                    "screenshot_${java.util.UUID.randomUUID()}.$extension"
-                )
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    destination.outputStream().use { output -> input.copyTo(output) }
+        importMessage = "Importing and validating screenshots…"
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val copied = mutableListOf<File>()
+                    var rejected = 0
+                    uris.forEach { uri ->
+                        val mime = context.contentResolver.getType(uri)
+                        val extension = when (mime?.lowercase()) {
+                            "image/jpeg", "image/jpg" -> "jpg"
+                            "image/png" -> "png"
+                            "image/webp" -> "webp"
+                            else -> null
+                        }
+                        if (extension == null) {
+                            rejected++
+                            return@forEach
+                        }
+                        val destination = File(
+                            store.profileDirectory(profile.id),
+                            "screenshot_${java.util.UUID.randomUUID()}.$extension"
+                        )
+                        try {
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                destination.outputStream().use { output ->
+                                    val buffer = ByteArray(16 * 1024)
+                                    var total = 0L
+                                    while (true) {
+                                        val count = input.read(buffer)
+                                        if (count < 0) break
+                                        total += count
+                                        require(total <= 30L * 1024L * 1024L) {
+                                            "Screenshot exceeds the 30 MiB size limit."
+                                        }
+                                        output.write(buffer, 0, count)
+                                    }
+                                }
+                            } ?: error("Could not open selected image.")
+                            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                            BitmapFactory.decodeFile(destination.absolutePath, bounds)
+                            require(bounds.outWidth > 0 && bounds.outHeight > 0) {
+                                "Selected file is not a supported image."
+                            }
+                            copied += destination
+                        } catch (_: Exception) {
+                            destination.delete()
+                            rejected++
+                        }
+                    }
+                    val accepted = store.addScreenshots(profile.id, copied)
+                    accepted to rejected
                 }
-                if (destination.exists() && destination.length() > 0) copied += destination
             }
-        }
-        if (copied.isNotEmpty()) {
-            val accepted = store.addScreenshots(profile.id, copied)
-            profiles = store.load()
-            importMessage = "Added $accepted unique screenshot(s); exact duplicates were skipped."
+            result.onSuccess { (accepted, rejected) ->
+                profiles = store.load()
+                importMessage = "Added $accepted unique screenshot(s); exact duplicates were skipped. Rejected $rejected unsupported or invalid file(s)."
+            }.onFailure {
+                importMessage = "Screenshot import failed: ${it.localizedMessage}"
+            }
         }
     }
 
