@@ -513,6 +513,23 @@ private fun CropThumbnail(file: File) {
     }
 }
 
+private fun decodeCropPreview(file: File): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sampleSize = 1
+    val largestDimension = max(bounds.outWidth, bounds.outHeight)
+    while (largestDimension / sampleSize > 1800) sampleSize *= 2
+    return BitmapFactory.decodeFile(
+        file.absolutePath,
+        BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+    )
+}
+
 @Composable
 private fun CropReviewDialog(
     screenshot: File,
@@ -520,7 +537,7 @@ private fun CropReviewDialog(
     onSave: (RectF) -> Unit
 ) {
     val bitmap by produceState<Bitmap?>(initialValue = null, key1 = screenshot.absolutePath) {
-        value = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(screenshot.absolutePath) }
+        value = withContext(Dispatchers.IO) { decodeCropPreview(screenshot) }
     }
     DisposableEffect(bitmap) {
         onDispose { bitmap?.takeIf { !it.isRecycled }?.recycle() }
