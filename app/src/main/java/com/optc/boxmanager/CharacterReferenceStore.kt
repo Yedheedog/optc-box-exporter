@@ -6,6 +6,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 data class CharacterReference(
     val id: Int,
@@ -76,8 +79,19 @@ class CharacterReferenceStore(context: Context) {
                 output.write(canonical.toByteArray(Charsets.UTF_8))
                 output.fd.sync()
             }
-            check(temporary.renameTo(referenceFile)) {
-                "Could not replace the shared character reference file."
+            try {
+                Files.move(
+                    temporary.toPath(),
+                    referenceFile.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING
+                )
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(
+                    temporary.toPath(),
+                    referenceFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+                )
             }
         } finally {
             if (temporary.exists()) temporary.delete()
@@ -103,6 +117,8 @@ class CharacterReferenceStore(context: Context) {
         }
         val array = root.optJSONArray("characters")
             ?: error("The reference JSON has no characters array.")
+        val declaredCount = root.optInt("character_count", array.length())
+        require(declaredCount == array.length()) { "Character count does not match the records in the file." }
         val seen = HashSet<Int>(array.length())
         return (0 until array.length()).map { index ->
             val item = array.optJSONObject(index)
