@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -55,7 +56,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -586,14 +586,16 @@ private fun CropReviewDialog(
     var dragStart by remember { mutableStateOf<Offset?>(null) }
     var dragEnd by remember { mutableStateOf<Offset?>(null) }
 
+    val sourceBitmap = bitmap
     fun fittedImageRect(size: IntSize): Rect {
-        if (size.width <= 0 || size.height <= 0 || bitmap == null) return Rect.Zero
+        if (size.width <= 0 || size.height <= 0) return Rect.Zero
+        val source = sourceBitmap ?: return Rect.Zero
         val scale = min(
-            size.width.toFloat() / bitmap.width.toFloat(),
-            size.height.toFloat() / bitmap.height.toFloat()
+            size.width.toFloat() / source.width.toFloat(),
+            size.height.toFloat() / source.height.toFloat()
         )
-        val width = bitmap.width * scale
-        val height = bitmap.height * scale
+        val width = source.width * scale
+        val height = source.height * scale
         val left = (size.width - width) / 2f
         val top = (size.height - height) / 2f
         return Rect(left, top, left + width, top + height)
