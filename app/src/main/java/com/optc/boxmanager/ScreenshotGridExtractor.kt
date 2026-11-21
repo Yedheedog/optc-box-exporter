@@ -103,14 +103,14 @@ object ScreenshotGridExtractor {
                 val dx = abs(x2 - x1)
                 val dy = abs(y2 - y1)
                 if (dy <= 1 && dx > preview.width * 0.05) {
-                    Imgproc.line(gray, org.opencv.core.Point(0.0, y1.toDouble()),
+                    Imgproc.line(edges, org.opencv.core.Point(0.0, y1.toDouble()),
                         org.opencv.core.Point(preview.width.toDouble(), y2.toDouble()), Scalar(255.0), 2)
                 } else if (dx <= 1 && dy > preview.height * 0.05) {
-                    Imgproc.line(gray, org.opencv.core.Point(x1.toDouble(), 0.0),
+                    Imgproc.line(edges, org.opencv.core.Point(x1.toDouble(), 0.0),
                         org.opencv.core.Point(x2.toDouble(), preview.height.toDouble()), Scalar(255.0), 2)
                 }
             }
-            Imgproc.threshold(gray, binary, 200.0, 255.0, Imgproc.THRESH_BINARY)
+            Imgproc.threshold(edges, binary, 200.0, 255.0, Imgproc.THRESH_BINARY)
             Imgproc.findContours(binary, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE)
 
             val imageArea = preview.width.toDouble() * preview.height.toDouble()
