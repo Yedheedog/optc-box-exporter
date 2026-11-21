@@ -56,6 +56,8 @@ object ScreenshotGridExtractor {
             }
         ) ?: error("This screenshot image could not be decoded.")
 
+        val previewWidth = preview.width
+        val previewHeight = preview.height
         val rgba = Mat()
         val bgr = Mat()
         val white = Mat()
@@ -151,8 +153,8 @@ object ScreenshotGridExtractor {
             ?: error("Android could not open the original screenshot for cropping.")
         try {
             val outputDirectory = File(profileDirectory, "extracted_portraits").apply { mkdirs() }
-            val scaleX = decoder.width.toFloat() / max(1, bounds.outWidth / sample)
-            val scaleY = decoder.height.toFloat() / max(1, bounds.outHeight / sample)
+            val scaleX = decoder.width.toFloat() / previewWidth
+            val scaleY = decoder.height.toFloat() / previewHeight
             return tiles.map { tile ->
                 val left = (tile.x * scaleX).toInt().coerceIn(0, decoder.width - 1)
                 val top = (tile.y * scaleY).toInt().coerceIn(0, decoder.height - 1)
