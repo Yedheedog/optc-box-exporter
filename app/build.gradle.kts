@@ -7,6 +7,7 @@ android {
     namespace = "com.optc.boxmanager"
     compileSdk = 35
     defaultConfig {
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         applicationId = "com.optc.boxmanager"
         minSdk = 26
         targetSdk = 35
