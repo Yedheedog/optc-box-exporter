@@ -15,7 +15,10 @@ def build_box_html(entries: Iterable[Mapping[str, object]]) -> str:
         if isinstance(classes, str):
             classes = [classes]
         class_text = escape(", ".join(str(value) for value in classes))
-        stars = escape(str(entry.get("stars") or ""))
+        stars_value = str(entry.get("stars") or "")
+        if stars_value and not stars_value.endswith("★") and not stars_value.endswith("＋"):
+            stars_value += "★"
+        stars = escape(stars_value)
         image = str(entry.get("thumbnail") or "")
         if not image.startswith("data:image/"):
             image = ""
@@ -23,7 +26,7 @@ def build_box_html(entries: Iterable[Mapping[str, object]]) -> str:
             '<article class="card" data-search="{search}">'
             '<img loading="lazy" src="{image}" alt="{name}">'
             '<div class="details"><strong>{name}</strong>'
-            '<span>#{number} · {type_name} · {stars}★</span>'
+            '<span>#{number} · {type_name} · {stars}</span>'
             '<small>{class_text}</small></div></article>'.format(
                 search=escape(" ".join([name, number, type_name, class_text]).lower(), quote=True),
                 image=escape(image, quote=True), name=name, number=number,
