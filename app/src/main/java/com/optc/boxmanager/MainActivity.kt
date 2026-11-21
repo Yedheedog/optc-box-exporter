@@ -85,6 +85,7 @@ private fun BoxManagerScreen() {
     var selectedId by remember { mutableStateOf(profiles.firstOrNull()?.id) }
     var showCreate by remember { mutableStateOf(false) }
     var showScreenshotPicker by remember { mutableStateOf(false) }
+    var showAutoExtractPicker by remember { mutableStateOf(false) }
     var showAddCharacter by remember { mutableStateOf(false) }
     var cropScreenshot by remember { mutableStateOf<File?>(null) }
     var cropMessage by remember { mutableStateOf<String?>(null) }
@@ -291,6 +292,11 @@ private fun BoxManagerScreen() {
                     onClick = { showScreenshotPicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Extract portrait from screenshot") }
+                OutlinedButton(
+                    enabled = selected.screenshots.isNotEmpty(),
+                    onClick = { showAutoExtractPicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Auto-extract card images") }
                 Text("Saved offline screenshot portraits: ${savedCrops.size}")
                 if (referenceCount > 0) {
                     OutlinedButton(onClick = { showAddCharacter = true }, modifier = Modifier.fillMaxWidth()) {
@@ -400,6 +406,43 @@ private fun BoxManagerScreen() {
             },
             confirmButton = {
                 TextButton(onClick = { showScreenshotPicker = false }) { Text("Close") }
+            }
+        )
+    }
+
+    if (showAutoExtractPicker && selected != null) {
+        AlertDialog(
+            onDismissRequest = { showAutoExtractPicker = false },
+            title = { Text("Choose screenshot to scan") },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    items(selected.screenshots) { name ->
+                        TextButton(
+                            onClick = {
+                                val profileId = selected.id
+                                val source = File(store.profileDirectory(profileId), name)
+                                showAutoExtractPicker = false
+                                cropMessage = "Scanning card grid in $name…"
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) {
+                                        runCatching {
+                                            ScreenshotGridExtractor.extract(context, profileId, source)
+                                        }
+                                    }
+                                    result.onSuccess { files ->
+                                        cropMessage = "Extracted \${files.size} candidate card images from $name. Review the thumbnails below; no character IDs or quantities were assigned."
+                                    }.onFailure { error ->
+                                        cropMessage = "Could not extract card images: \${error.localizedMessage ?: error.javaClass.simpleName}"
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(name) }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAutoExtractPicker = false }) { Text("Close") }
             }
         )
     }
