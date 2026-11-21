@@ -20,3 +20,10 @@ __pycache__/
 # AI
 /ai/*
 !/ai/prepare-ai.sh
+
+# Android / Gradle
+.gradle/
+local.properties
+**/build/
+*.apk
+*.aab
