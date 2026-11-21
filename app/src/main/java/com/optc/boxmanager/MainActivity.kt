@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -52,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -202,6 +204,13 @@ private fun BoxManagerScreen() {
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Extract portrait from screenshot") }
                 Text("Saved offline screenshot portraits: ${savedCrops.size}")
+                if (savedCrops.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(savedCrops, key = { it.name }) { crop ->
+                            CropThumbnail(crop)
+                        }
+                    }
+                }
                 OutlinedButton(
                     onClick = { jsonExporter.launch("${selected.name.replace(Regex("[^A-Za-z0-9_-]"), "_")}_box.json") },
                     modifier = Modifier.fillMaxWidth()
@@ -270,6 +279,38 @@ private fun BoxManagerScreen() {
                 }
             }
         )
+    }
+}
+
+
+@Composable
+private fun CropThumbnail(file: File) {
+    val bitmap by produceState<Bitmap?>(initialValue = null, key1 = file.absolutePath) {
+        value = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(file.absolutePath) }
+    }
+    DisposableEffect(bitmap) {
+        onDispose { bitmap?.takeIf { !it.isRecycled }?.recycle() }
+    }
+    Card {
+        Column(
+            Modifier.padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap!!.asImageBitmap(),
+                    contentDescription = "Extracted offline portrait",
+                    modifier = Modifier.size(92.dp),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(Modifier.size(92.dp), contentAlignment = Alignment.Center) {
+                    Text("Loading")
+                }
+            }
+            Text(file.name, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
