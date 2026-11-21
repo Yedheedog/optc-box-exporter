@@ -18,8 +18,11 @@ object PortraitCache {
         "https://cdn.gb.onepiece-tc.jp/en/images/characters/character_"
     private const val MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-    fun cachedFile(context: Context, server: String, characterId: Int): File =
-        File(File(context.filesDir, "portraits/${server.lowercase()}"), "$characterId.png")
+    fun cachedFile(context: Context, server: String, characterId: Int): File {
+        require(server == "Global" || server == "Japan") { "Unsupported OPTC server." }
+        require(characterId > 0) { "Character ID must be positive." }
+        return File(File(context.filesDir, "portraits/${server.lowercase()}"), "$characterId.png")
+    }
 
     fun getOrDownload(
         context: Context,
