@@ -16,7 +16,7 @@ def build_box_html(entries: Iterable[Mapping[str, object]]) -> str:
             classes = [classes]
         class_text = escape(", ".join(str(value) for value in classes))
         stars_value = str(entry.get("stars") or "")
-        if stars_value and not stars_value.endswith("★") and not stars_value.endswith("＋"):
+        if stars_value and "★" not in stars_value:
             stars_value += "★"
         stars = escape(stars_value)
         image = str(entry.get("thumbnail") or "")
