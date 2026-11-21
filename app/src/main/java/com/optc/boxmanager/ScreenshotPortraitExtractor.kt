@@ -44,17 +44,36 @@ object ScreenshotPortraitExtractor {
             normalizedBounds.width() > 0f && normalizedBounds.height() > 0f
         ) { "Crop bounds must be a non-empty normalized rectangle within the screenshot." }
 
-        val decoder = BitmapRegionDecoder.newInstance(source.absolutePath, false)
-            ?: error("Could not open the source screenshot for region decoding.")
+        require(source.length() in 1..(30L * 1024L * 1024L)) {
+            "Screenshot is empty or exceeds the 30 MiB extraction limit."
+        }
+        val decoder = try {
+            BitmapRegionDecoder.newInstance(source.absolutePath, false)
+        } catch (error: Exception) {
+            throw IllegalArgumentException("Android could not read this screenshot format: \${error.localizedMessage}", error)
+        } ?: error("Could not open the source screenshot for region decoding.")
         try {
             val left = (normalizedBounds.left * decoder.width).toInt().coerceIn(0, decoder.width - 1)
             val top = (normalizedBounds.top * decoder.height).toInt().coerceIn(0, decoder.height - 1)
             val right = (normalizedBounds.right * decoder.width).toInt().coerceIn(left + 1, decoder.width)
             val bottom = (normalizedBounds.bottom * decoder.height).toInt().coerceIn(top + 1, decoder.height)
-            val crop = decoder.decodeRegion(
-                Rect(left, top, right, bottom),
-                BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
-            ) ?: error("Could not decode the selected portrait region.")
+            val regionWidth = right - left
+            val regionHeight = bottom - top
+            // Keep extracted art crisp while avoiding full-resolution allocations that can
+            // exhaust memory on high-resolution phone screenshots.
+            var sampleSize = 1
+            while (maxOf(regionWidth, regionHeight) / sampleSize > 1600) sampleSize *= 2
+            val crop = try {
+                decoder.decodeRegion(
+                    Rect(left, top, right, bottom),
+                    BitmapFactory.Options().apply {
+                        inSampleSize = sampleSize
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
+                    }
+                )
+            } catch (error: OutOfMemoryError) {
+                throw IllegalStateException("Not enough memory to extract this crop. Select a smaller portrait area and try again.", error)
+            } ?: error("Could not decode the selected portrait region.")
             try {
                 val directory = File(profileDirectory, "extracted_portraits").apply { mkdirs() }
                 val destination = File(directory, outputName)
