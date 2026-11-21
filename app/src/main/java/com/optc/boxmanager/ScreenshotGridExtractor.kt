@@ -96,7 +96,7 @@ object ScreenshotGridExtractor {
             "No aligned card grid was detected. Use manual crop review for this screenshot."
         }
         require(uniqueTiles.size <= 100) {
-            "The detector found too many candidate regions (\${uniqueTiles.size}). Use manual crop review."
+            "The detector found too many candidate regions (${uniqueTiles.size}). Use manual crop review."
         }
 
         val decoder = BitmapRegionDecoder.newInstance(source.absolutePath, false)
@@ -118,9 +118,9 @@ object ScreenshotGridExtractor {
                         inPreferredConfig = Bitmap.Config.RGB_565
                     }) ?: error("Could not decode one detected card image.")
                 try {
-                    val name = "portrait_auto_\${UUID.randomUUID()}.jpg"
+                    val name = "portrait_auto_${UUID.randomUUID()}.jpg"
                     val destination = File(outputDirectory, name)
-                    val temporary = File(outputDirectory, "\$name.tmp")
+                    val temporary = File(outputDirectory, "$name.tmp")
                     try {
                         FileOutputStream(temporary).use { output ->
                             check(crop.compress(Bitmap.CompressFormat.JPEG, 92, output)) {
