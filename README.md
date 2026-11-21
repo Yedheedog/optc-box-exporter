@@ -27,7 +27,7 @@ Farm Lite's Global helper uses this portrait URL pattern:
 
 `https://cdn.gb.onepiece-tc.jp/en/images/characters/character_####_t.png`
 
-The helper fetches the CDN URL directly; Global portrait downloads still need app-side validation and caching. The Japan-server CDN URL has not yet been verified. Do not infer a Japan URL by substituting a hostname.
+The helper fetches the CDN URL directly. An Android download/cache utility now uses that Global URL pattern, validates image responses, limits download size, and stores portraits in app-private storage. Live CDN availability has not yet been verified from this environment, and the utility is not yet wired into the collection screen. The Japan-server CDN URL has not yet been verified; the app deliberately refuses Japan portrait downloads rather than guessing a hostname.
 
 The legacy matcher expects:
 - `data/units.json` — character metadata.
