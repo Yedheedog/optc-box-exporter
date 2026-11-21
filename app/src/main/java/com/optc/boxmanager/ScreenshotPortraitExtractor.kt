@@ -85,7 +85,7 @@ object ScreenshotPortraitExtractor {
         profileId: String,
         screenshot: File,
         normalizedBounds: RectF,
-        outputName: String = "portrait_\${UUID.randomUUID()}.png"
+        outputName: String = "portrait_${UUID.randomUUID()}.png"
     ): File {
         require(profileId.matches(Regex("[A-Za-z0-9-]{1,80}"))) {
             "Invalid box profile ID."
@@ -113,7 +113,7 @@ object ScreenshotPortraitExtractor {
             val directory = File(profileDirectory, "extracted_portraits").apply { mkdirs() }
             val destination = File(directory, outputName)
             require(!destination.exists()) { "That extracted portrait filename already exists." }
-            val temporary = File(directory, "\$outputName.tmp")
+            val temporary = File(directory, "$outputName.tmp")
             try {
                 FileOutputStream(temporary).use { output ->
                     check(crop.compress(Bitmap.CompressFormat.PNG, 100, output)) {
