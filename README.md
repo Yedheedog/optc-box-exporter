@@ -32,10 +32,10 @@ The Farm Lite source repository defines the static character master table as `Ms
 
 ## Current implementation notes
 
-- Multiple screenshots can be selected and processed in one request.
+- Multiple screenshots can be selected and processed in one request. Byte-identical files selected more than once are skipped.
 - The result is one standalone HTML file with embedded thumbnails and local search.
 - The current legacy detector/matcher is retained for the first integration pass. Its accuracy and support for current game layouts still need validation against representative screenshots.
-- Cross-screenshot overlap deduplication is not enabled yet. It must be based on matching the same visual card location across overlapping screenshots, not just character ID, because a box can contain multiple copies of the same unit. Until that is implemented and tested, all detected cards are preserved rather than silently dropping legitimate duplicate copies.
+- Cross-screenshot overlap deduplication is not enabled yet. It must be based on matching the same visual card location across overlapping screenshots, not just character ID, because a box can contain multiple copies of the same unit. Until that is implemented and tested, all detected cards are preserved rather than silently dropping legitimate duplicate copies. Byte-identical screenshot files are safely skipped.
 
 ## Project separation
 
