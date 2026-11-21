@@ -146,7 +146,7 @@ object ScreenshotGridExtractor {
             "No clear character-card squares were detected. Try the manual crop tool for this screenshot."
         }
         require(tiles.size <= 100) {
-            "The detector found too many regions (\${tiles.size}). Use manual crop review instead."
+            "The detector found too many regions (${tiles.size}). Use manual crop review instead."
         }
 
         val decoder = BitmapRegionDecoder.newInstance(source.absolutePath, false)
@@ -170,9 +170,9 @@ object ScreenshotGridExtractor {
                     }
                 ) ?: error("Could not decode one detected card image.")
                 try {
-                    val name = "portrait_auto_\${UUID.randomUUID()}.png"
+                    val name = "portrait_auto_${UUID.randomUUID()}.png"
                     val destination = File(outputDirectory, name)
-                    val temporary = File(outputDirectory, "\$name.tmp")
+                    val temporary = File(outputDirectory, "$name.tmp")
                     try {
                         FileOutputStream(temporary).use { output ->
                             check(crop.compress(Bitmap.CompressFormat.PNG, 100, output)) {
