@@ -79,9 +79,10 @@ def export_characters(database_path, output_path):
 
         class_one = CLASSES.get(int(_value(row, "characterType_", -1)), "")
         class_two = CLASSES.get(int(_value(row, "subCharacterType_", -1)), "")
-        classes = [value for value in (class_one, class_two) if value and value not in (class_one,)[:0]]
-        if len(classes) == 2 and classes[0] == classes[1]:
-            classes.pop()
+        classes = []
+        for value in (class_one, class_two):
+            if value and value not in classes:
+                classes.append(value)
 
         rarity_label = str(rarity) + "★"
         if int(_value(row, "isRarityPlus_", 0)) == 1:
