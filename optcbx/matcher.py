@@ -17,8 +17,7 @@ from optcbx.units import parse_units, Character
 # Keep computational expensive variables in memory
 _portraits_paths = None
 _portraits = {}
-_units = None
-_units_ids = None
+_character_reference = None
 
 FindCharactersResult = Union[List[int], Tuple[List[int], np.ndarray]]
 
@@ -32,18 +31,46 @@ def find_characters_from_screenshot(
     if isinstance(image_size, int):
         image_size = (image_size,) * 2
 
-    global _units, _units_ids
+    global _character_reference
 
     characters = detect_characters(screenshot, image_size)
     id_matches = find_characters_ids(characters, dist_method=dist_method)
 
-    if _units is None:
-        _units = json.load(open('data/units.json'))
-        _units = parse_units(_units)
-        _units_ids = np.array([o.number for o in _units])
+    if _character_reference is None:
+        farm_lite_path = Path('data/farm_lite_characters.json')
+        if farm_lite_path.is_file():
+            with farm_lite_path.open(encoding='utf-8') as reference_file:
+                payload = json.load(reference_file)
+            _character_reference = {}
+            for record in payload.get('characters', []):
+                character_id = int(record['id'])
+                _character_reference[character_id] = Character(
+                    name=str(record.get('name') or 'Unknown character'),
+                    type_=str(record.get('type') or ''),
+                    class_=record.get('classes') or [],
+                    stars=str(record.get('stars') or ''),
+                    number=character_id
+                )
+        else:
+            with open('data/units.json', encoding='utf-8') as units_file:
+                legacy_units = parse_units(json.load(units_file))
+            _character_reference = {
+                int(unit.number): unit for unit in legacy_units
+            }
 
-    id_matches = [(_units_ids == i).argmax() for i in id_matches]
-    matched_units = [_units[i] for i in id_matches]
+    matched_units = [
+        _character_reference.get(
+            int(character_id),
+            Character(
+                name='Unknown character',
+                type_='',
+                class_=[],
+                stars='',
+                number=int(character_id)
+            )
+        )
+        for character_id in id_matches
+    ]
 
     if not return_thumbnails:
         return matched_units
