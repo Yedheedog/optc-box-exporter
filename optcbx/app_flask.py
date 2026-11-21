@@ -1,6 +1,7 @@
 import base64
 import binascii
 import io
+import hashlib
 
 from flask import Flask, Response, jsonify, render_template, request
 from PIL import Image, UnidentifiedImageError
@@ -39,13 +40,18 @@ def export():
         return jsonify({"error": "Image size must be between 32 and 128."}), 400
 
     entries = []
+    seen_screenshots = set()
     for screenshot_index, encoded in enumerate(images, start=1):
         if not isinstance(encoded, str):
             return jsonify({"error": "Each screenshot must be a base64 image."}), 400
         try:
             raw = base64.b64decode(encoded, validate=True)
+            fingerprint = hashlib.sha256(raw).hexdigest()
+            if fingerprint in seen_screenshots:
+                continue
+            seen_screenshots.add(fingerprint)
             source = Image.open(io.BytesIO(raw)).convert("RGB")
-        except (binascii.Error, UnidentifiedImageError, ValueError):
+        except (binascii.Error, UnidentifiedImageError, OSError, ValueError):
             return jsonify({"error": "Screenshot {0} is not a valid image.".format(screenshot_index)}), 400
 
         pixels = np.asarray(source)[:, :, ::-1].copy()
