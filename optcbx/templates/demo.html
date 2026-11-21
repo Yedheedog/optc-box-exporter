@@ -1,37 +1,11 @@
-<h2 class="mt-4 mb-4" id="demo">Try it out!</h2>
-
-<h4>Image Size</h4>
-<div class="slidecontainer">
-  <p>
-    Pick an image size. Larger image sizes enhance results, but increases
-    computation time. 
-  </p>
-  <p class="alert alert-warning">
-    Sizes larger than 100 are not recommended due its high computational cost
-  </p>
-  <code class="slider-disp">
-    Image Size: 64x64
-  </code>
-  <input type="range" min="32" max="128" step="32" value="64" class="slider" 
-    id="image-size-slider">
-</div>
-
-<form class="mt-2 pt-3">
-  <h4>Upload Screenshot</h4>
-
-  <div class="form-group">
-    <label for="screenshot-file">Character box Screenshot</label>
-    <input type="file" class="form-control-file" id="screenshot-file">
-  </div>
-
-  <div class="screenshot-preview">
-
-  </div>
-</form>
-
-<button class="mt-4 btn btn-block btn-lg btn-outline-secondary text-center"
-  id="export-btn"
-  onclick="exportCharacterBox()"
-  disabled="true">Export!</button>
-
-<div class="export-disp"></div>
+<section class="export-panel" id="demo">
+  <h2>Export your character box</h2>
+  <p>Select all screenshots of your in-game character box. The exporter processes each image and combines the detected cards into one self-contained HTML file.</p>
+  <label for="screenshot-files">Character box screenshots</label>
+  <input type="file" id="screenshot-files" accept="image/*" multiple>
+  <div id="screenshot-preview" class="preview-list" aria-live="polite"></div>
+  <label for="image-size-slider">Recognition image size: <output id="image-size-value">64 × 64</output></label>
+  <input type="range" min="32" max="128" step="32" value="64" id="image-size-slider">
+  <button type="button" id="export-btn" disabled>Recognize and download HTML</button>
+  <p id="export-status" role="status" aria-live="polite"></p>
+</section>
