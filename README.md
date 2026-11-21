@@ -1,42 +1,51 @@
-# OPTC Box Exporter
+# OPTC Box Manager
 
-A standalone screenshot-to-HTML exporter for One Piece Treasure Cruise character boxes.
+An Android-first, standalone box manager for One Piece Treasure Cruise. This project is independent from OPTC Farm Lite / Function Omega.
 
-## Intended workflow
+## Android app
 
-1. Take screenshots of your character box in the official game.
-2. Select all screenshots in the exporter.
-3. Run recognition.
-4. Download one self-contained `optc-character-box.html` file. It includes the detected portrait crops and works offline.
+Open the repository root in Android Studio and sync the Gradle project. The Android module is in `app/`.
 
-The exporter does **not** log in to the game, call account or inventory APIs, or read OPTC Farm Lite account saves.
+Current scaffold (version 0.1.0):
+- Create separately named Global or Japan box profiles.
+- Store each profile's screenshots in its own app-private directory.
+- Import multiple screenshots from the Android gallery using the system document picker.
+- Export a versioned JSON document (JSON only; no HTML export).
+- Optionally import the Farm Lite device profile as a separate authentication source. The selected file is encrypted with an Android Keystore AES-GCM key and stored outside box-profile data. The network login adapter is not connected yet.
 
-## Run locally
+The app currently exports the profile manifest and screenshot filenames. Character recognition has not yet been connected, so the characters array is intentionally empty until recognition is implemented and validated. No APK has been built or released yet.
 
-Install the dependencies in `requirements.txt`, make sure the recognition assets described below are present, and start the Flask app:
+## JSON format
 
-```bash
-python -m pip install -r requirements.txt
-python -m flask --app optcbx.app_flask run
-```
+The original OPTC Box Exporter master branch did not define a persistent JSON box-export format. This project defines a new documented format in [docs/JSON_EXPORT_SCHEMA.md](docs/JSON_EXPORT_SCHEMA.md). Each character ID will have one record with a quantity; separate IDs remain separate even when display names match.
 
-## Recognition assets
+## Recognition and portrait work
 
-The original matcher expects:
+The legacy Python detector and matcher remain in the repository as research/reference code. They are not yet integrated into the Android app. Recognition must be validated against current game screenshots before being used for collection counts.
 
-- `data/units.json` — character metadata used by the legacy matcher.
+Farm Lite's Global helper uses this portrait URL pattern:
+
+`https://cdn.gb.onepiece-tc.jp/en/images/characters/character_####_t.png`
+
+The helper fetches the CDN URL directly; Global portrait downloads still need app-side validation and caching. The Japan-server CDN URL has not yet been verified. Do not infer a Japan URL by substituting a hostname.
+
+The legacy matcher expects:
+- `data/units.json` — character metadata.
 - `data/Portraits/*.png` — reference portraits named by character ID.
-- `ai/config.yml` and `ai/checkpoint.pt` — the legacy SSD detector, if using its smart detection mode.
+- `ai/config.yml` and `ai/checkpoint.pt` — optional legacy SSD detector assets.
 
-The Farm Lite source repository defines the static character master table as `MstCharacter_` and uses fields such as `serverId_`, `name_`, `attributeId_`, `subAttributeId_`, and `characterType_`. Its generated `sakura.db` is not committed in that repository. A future data-import step will convert an authorized static export of that table into this project's independent reference dataset. No Farm Lite runtime or account data is required.
+The Farm Lite static `MstCharacter_` table may be imported as a copied reference dataset when an authorized static export is available. Do not use Farm Lite inventory or account data as box contents.
 
-## Current implementation notes
+## Accuracy requirements
 
-- Multiple screenshots can be selected and processed in one request. Byte-identical files selected more than once are skipped.
-- The result is one standalone HTML file with embedded thumbnails and local search.
-- The current legacy detector/matcher is retained for the first integration pass. Its accuracy and support for current game layouts still need validation against representative screenshots.
-- Cross-screenshot overlap deduplication is not enabled yet. It must be based on matching the same visual card location across overlapping screenshots, not just character ID, because a box can contain multiple copies of the same unit. Until that is implemented and tested, all detected cards are preserved rather than silently dropping legitimate duplicate copies. Byte-identical screenshot files are safely skipped.
+- Exact duplicate screenshots can be skipped by file hash.
+- Overlapping screenshots require spatial/visual matching of the same physical card location. Never deduplicate solely by character ID: real duplicate copies must remain countable.
+- Ambiguous overlap matches must be shown for review rather than silently discarded.
+- Duplicate IDs will be grouped with a quantity badge (for example, ×2) in the collection UI.
 
-## Project separation
+## Security and project separation
 
-This repository is independent from OPTC Farm Lite / Function Omega. Static reference data may be imported or refreshed as a copy, but there is no runtime connection to bot profiles, credentials, farming, or live game inventory.
+- Box profiles are local app data and are independent of game accounts.
+- The optional Farm Lite auth source is stored separately and encrypted with Android Keystore.
+- Never commit device profiles, session tokens, account credentials, or live inventory data.
+- Farm Lite is a read-only reference for this project; no Farm Lite farming or account behavior is modified.
