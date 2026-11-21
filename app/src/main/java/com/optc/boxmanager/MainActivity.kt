@@ -289,9 +289,16 @@ private fun BoxManagerScreen() {
                 Text("Selected: ${selected.name}", style = MaterialTheme.typography.titleMedium)
                 OutlinedButton(
                     enabled = selected.screenshots.isNotEmpty(),
-                    onClick = { showScreenshotPicker = true },
+                    onClick = {
+                        cropMessage = null
+                        showScreenshotPicker = true
+                    },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Extract portrait from screenshot") }
+                ) { Text("Crop portrait from imported screenshot") }
+                Text(
+                    "Choose one of the screenshots already imported into this profile. This action does not open a file manager.",
+                    style = MaterialTheme.typography.bodySmall
+                )
                 OutlinedButton(
                     enabled = selected.screenshots.isNotEmpty(),
                     onClick = { showAutoExtractPicker = true },
@@ -396,8 +403,14 @@ private fun BoxManagerScreen() {
                     items(selected.screenshots) { name ->
                         TextButton(
                             onClick = {
-                                cropScreenshot = File(store.profileDirectory(selected.id), name)
+                                val source = File(store.profileDirectory(selected.id), name)
                                 showScreenshotPicker = false
+                                if (source.isFile && source.length() > 0L) {
+                                    cropMessage = null
+                                    cropScreenshot = source
+                                } else {
+                                    cropMessage = "That imported screenshot is missing or empty. Import it again and retry."
+                                }
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text(name) }
@@ -629,20 +642,27 @@ private fun CropThumbnail(file: File) {
 }
 
 private fun decodeCropPreview(file: File): Bitmap? {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.absolutePath, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    if (!file.isFile || file.length() <= 0L) return null
+    return try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
-    var sampleSize = 1
-    val largestDimension = max(bounds.outWidth, bounds.outHeight)
-    while (largestDimension / sampleSize > 1800) sampleSize *= 2
-    return BitmapFactory.decodeFile(
-        file.absolutePath,
-        BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-            inPreferredConfig = Bitmap.Config.RGB_565
-        }
-    )
+        var sampleSize = 1
+        val largestDimension = max(bounds.outWidth, bounds.outHeight)
+        while (largestDimension / sampleSize > 1400) sampleSize *= 2
+        BitmapFactory.decodeFile(
+            file.absolutePath,
+            BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+        )
+    } catch (_: OutOfMemoryError) {
+        null
+    } catch (_: Exception) {
+        null
+    }
 }
 
 @Composable
@@ -654,9 +674,8 @@ private fun CropReviewDialog(
     val bitmap by produceState<Bitmap?>(initialValue = null, key1 = screenshot.absolutePath) {
         value = withContext(Dispatchers.IO) { decodeCropPreview(screenshot) }
     }
-    DisposableEffect(bitmap) {
-        onDispose { bitmap?.takeIf { !it.isRecycled }?.recycle() }
-    }
+    // Keep the preview bitmap alive for the lifetime of the dialog. Recycling it from
+    // DisposableEffect can race Compose's Image renderer during dialog transitions.
     val imageBitmap = remember(bitmap) { bitmap?.asImageBitmap() }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     var dragStart by remember { mutableStateOf<Offset?>(null) }
