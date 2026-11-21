@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -198,12 +200,20 @@ private fun BoxManagerScreen() {
 
     Scaffold { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text("OPTC Box Manager", style = MaterialTheme.typography.headlineMedium)
             Text("Independent local box profiles • Android")
             Button(onClick = { showCreate = true }) { Text("Add box profile") }
+            Button(
+                onClick = { imagePicker.launch(arrayOf("image/*")) },
+                enabled = selected != null,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Upload screenshots from gallery") }
+            if (selected == null) {
+                Text("Create or select a box profile before uploading screenshots.")
+            }
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -237,7 +247,7 @@ private fun BoxManagerScreen() {
             } else {
                 Text("Your box profiles", style = MaterialTheme.typography.titleMedium)
                 LazyColumn(
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(profiles, key = { it.id }) { profile ->
@@ -263,10 +273,6 @@ private fun BoxManagerScreen() {
             if (selected != null) {
                 val savedCrops = store.extractedPortraits(selected.id)
                 Text("Selected: ${selected.name}", style = MaterialTheme.typography.titleMedium)
-                Button(
-                    onClick = { imagePicker.launch(arrayOf("image/*")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Add screenshots from gallery") }
                 OutlinedButton(
                     enabled = selected.screenshots.isNotEmpty(),
                     onClick = { showScreenshotPicker = true },
