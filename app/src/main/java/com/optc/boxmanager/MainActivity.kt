@@ -90,6 +90,7 @@ private fun BoxManagerScreen() {
     var cropMessage by remember { mutableStateOf<String?>(null) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
+    var pendingExportJson by remember { mutableStateOf<String?>(null) }
     var authStatus by remember { mutableStateOf(if (AuthProfileVault.hasProfile(context)) "Encrypted auth source is stored on this device." else "No auth source imported.") }
     var referenceCount by remember { mutableIntStateOf(referenceStore.count()) }
     var referenceStatus by remember { mutableStateOf(if (referenceCount > 0) "Shared character catalogue loaded." else "No character catalogue imported.") }
@@ -187,14 +188,26 @@ private fun BoxManagerScreen() {
     val jsonExporter = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
-        val profile = profiles.firstOrNull { it.id == selectedId }
-        if (uri != null && profile != null) {
-            runCatching {
-                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
-                    it.write(store.exportJson(profile))
-                } ?: error("Could not open the destination file.")
-            }.onSuccess { exportMessage = "JSON file saved." }
-                .onFailure { exportMessage = "Could not write JSON: ${it.localizedMessage}" }
+        val json = pendingExportJson
+        pendingExportJson = null
+        if (uri == null) {
+            exportMessage = "Export cancelled."
+        } else if (json == null) {
+            exportMessage = "Export data was unavailable. Please try again."
+        } else {
+            exportMessage = "Saving JSON…"
+            scope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri, "w")?.use { output ->
+                            output.write(json.toByteArray(Charsets.UTF_8))
+                            output.flush()
+                        } ?: error("Android could not open the selected destination.")
+                    }
+                }
+                result.onSuccess { exportMessage = "JSON file saved successfully." }
+                    .onFailure { exportMessage = "JSON export failed: ${it.localizedMessage ?: it.javaClass.simpleName}" }
+            }
         }
     }
 
@@ -308,7 +321,21 @@ private fun BoxManagerScreen() {
                     }
                 }
                 OutlinedButton(
-                    onClick = { jsonExporter.launch("${selected.name.replace(Regex("[^A-Za-z0-9_-]"), "_")}_box.json") },
+                    onClick = {
+                        runCatching { store.exportJson(selected) }
+                            .onSuccess { json ->
+                                pendingExportJson = json
+                                val filename = "${selected.name.replace(Regex("[^A-Za-z0-9_-]"), "_")}_box.json"
+                                runCatching { jsonExporter.launch(filename) }
+                                    .onFailure {
+                                        pendingExportJson = null
+                                        exportMessage = "Could not open Android's save-file screen: ${it.localizedMessage ?: it.javaClass.simpleName}"
+                                    }
+                            }
+                            .onFailure {
+                                exportMessage = "Could not prepare JSON: ${it.localizedMessage ?: it.javaClass.simpleName}"
+                            }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Export collection as JSON") }
                 Text("Recognition status: not connected yet")
