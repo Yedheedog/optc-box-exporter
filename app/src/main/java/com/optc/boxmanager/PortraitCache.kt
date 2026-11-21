@@ -32,16 +32,22 @@ object PortraitCache {
             "The Japan portrait CDN endpoint has not been verified yet."
         }
 
+        val destination = cachedFile(context, server, characterId)
+        if (destination.exists() && destination.length() > 0) {
+            val cachedBitmap = BitmapFactory.decodeFile(destination.absolutePath)
+            if (cachedBitmap != null) {
+                cachedBitmap.recycle()
+                return destination
+            }
+            destination.delete()
+        }
+
+        // Cached portraits remain available offline; authenticate only when a download is needed.
         val sessionId = authenticatedSessionHeaders.entries
             .firstOrNull { it.key.equals("X-SESSION", ignoreCase = true) }
             ?.value
             ?.takeIf { it.isNotBlank() }
             ?: error("Portrait download requires an active authenticated game session (X-SESSION).")
-
-        val destination = cachedFile(context, server, characterId)
-        if (destination.exists() && destination.length() > 0 &&
-            BitmapFactory.decodeFile(destination.absolutePath) != null
-        ) return destination
 
         destination.parentFile?.mkdirs()
         val paddedId = characterId.toString().padStart(4, '0')
@@ -86,9 +92,11 @@ object PortraitCache {
                     }
                 }
             }
-            check(total > 0 && BitmapFactory.decodeFile(temporary.absolutePath) != null) {
+            val downloadedBitmap = BitmapFactory.decodeFile(temporary.absolutePath)
+            check(total > 0 && downloadedBitmap != null) {
                 "Downloaded portrait was empty or invalid."
             }
+            downloadedBitmap?.recycle()
             if (!temporary.renameTo(destination)) {
                 temporary.copyTo(destination, overwrite = true)
                 temporary.delete()
