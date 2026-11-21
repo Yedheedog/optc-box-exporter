@@ -430,9 +430,9 @@ private fun BoxManagerScreen() {
                                         }
                                     }
                                     result.onSuccess { files ->
-                                        cropMessage = "Extracted \${files.size} candidate card images from $name. Review the thumbnails below; no character IDs or quantities were assigned."
+                                        cropMessage = "Extracted ${files.size} candidate card images from $name. Review the thumbnails below; no character IDs or quantities were assigned."
                                     }.onFailure { error ->
-                                        cropMessage = "Could not extract card images: \${error.localizedMessage ?: error.javaClass.simpleName}"
+                                        cropMessage = "Could not extract card images: ${error.localizedMessage ?: error.javaClass.simpleName}"
                                     }
                                 }
                             },
