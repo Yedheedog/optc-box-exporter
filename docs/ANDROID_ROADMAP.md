@@ -11,6 +11,7 @@
 - [x] Separate encrypted Farm Lite auth-source vault using Android Keystore AES-GCM.
 - [x] Global CDN portrait downloader/cache utility based on Farm Lite's helper URL pattern.
 - [x] Profile-scoped screenshot portrait crop utility that preserves originals and saves validated PNG crops offline.
+- [x] Manual screenshot crop-review dialog with drag-to-select bounds and profile-private PNG output.
 - [x] Retire the HTML export endpoint and HTML builder from this feature branch.
 - [ ] Build and verify a debug APK on Android CI/device.
 
@@ -36,8 +37,8 @@
    - Group copies by character ID and show quantity badges at the portrait's bottom-right.
    - Keep different IDs separate even when names are identical.
 5. **Portrait extraction and cache integration**
-   - Connect the screenshot crop utility to a visual crop-review screen; automatic card-grid and portrait-region detection remain pending.
-   - Connect both extracted portraits and the Global CDN cache utility to collection thumbnails and offline display.
+   - [x] Connect the screenshot crop utility to a manual visual crop-review screen; automatic card-grid and portrait-region detection remain pending.
+   - Connect both extracted portraits and the Global CDN cache utility to collection thumbnails and offline display. Cached CDN portraits can now be read offline without a live session.
    - Verify Japan's actual CDN host/path before enabling Japan downloads.
    - Complete the login adapter using the encrypted Farm Lite device profile, then pass the live X-SESSION and matching game-client headers to every portrait CDN request. The portrait cache now rejects requests without X-SESSION.
 6. **JSON export**
