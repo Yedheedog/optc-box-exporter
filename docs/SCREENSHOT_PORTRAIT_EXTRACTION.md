@@ -24,6 +24,6 @@ Portraits must remain available even when the Global CDN refuses a request or an
 
 ## Current implementation status
 
-The Android app now provides a manual crop-review dialog: choose an imported screenshot, drag a rectangle over the portrait, and save the crop as a PNG in that profile's private `extracted_portraits/` directory. The original screenshot is preserved, crop decoding and writing run off the UI thread, and cached CDN portraits can be reused offline without a live session.
+The Android app now provides a manual crop-review dialog: choose an imported screenshot, drag a rectangle over the portrait, and save the crop as a PNG in that profile's private `extracted_portraits/` directory. The preview is downsampled for memory use, the selected region is decoded directly from the original at full resolution, and writing runs off the UI thread. The original screenshot is preserved, and saved crops can be assigned to a character ID from the shared reference catalogue. Cached CDN portraits can be reused offline without a live session.
 
 Automatic screenshot-to-card detection, automatic portrait-region detection, character-ID association, confidence scoring, overlap matching, and collection-thumbnail integration are not yet implemented. The manual crop UI saves an image only; it does not create or count a character record.
