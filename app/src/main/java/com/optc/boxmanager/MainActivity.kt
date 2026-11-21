@@ -1,5 +1,6 @@
 package com.optc.boxmanager
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.RectF
 import android.net.Uri
@@ -10,7 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +37,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -77,7 +79,6 @@ private fun BoxManagerScreen() {
     var showCreate by remember { mutableStateOf(false) }
     var showScreenshotPicker by remember { mutableStateOf(false) }
     var cropScreenshot by remember { mutableStateOf<File?>(null) }
-    var cropCount by remember { mutableIntStateOf(0) }
     var cropMessage by remember { mutableStateOf<String?>(null) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -262,7 +263,6 @@ private fun BoxManagerScreen() {
                         }
                     }
                     result.onSuccess {
-                        cropCount++
                         cropMessage = "Portrait crop saved offline: ${it.name}"
                     }.onFailure {
                         cropMessage = "Could not extract portrait: ${it.localizedMessage}"
@@ -279,7 +279,12 @@ private fun CropReviewDialog(
     onDismiss: () -> Unit,
     onSave: (RectF) -> Unit
 ) {
-    val bitmap = remember(screenshot.absolutePath) { BitmapFactory.decodeFile(screenshot.absolutePath) }
+    val bitmap by produceState<Bitmap?>(initialValue = null, key1 = screenshot.absolutePath) {
+        value = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(screenshot.absolutePath) }
+    }
+    DisposableEffect(bitmap) {
+        onDispose { bitmap?.takeIf { !it.isRecycled }?.recycle() }
+    }
     val imageBitmap = remember(bitmap) { bitmap?.asImageBitmap() }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     var dragStart by remember { mutableStateOf<Offset?>(null) }
