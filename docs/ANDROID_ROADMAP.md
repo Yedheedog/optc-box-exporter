@@ -19,6 +19,7 @@
    - Obtain an authorized static export of Farm Lite's MstCharacter_ master table or a verified current OPTC reference source.
    - Preserve the numeric server character ID as the stable key.
    - Record source version/date and license/provenance.
+   - The public optc-db/optc-db.github.io repository is GPL-3.0 and its latest reported push is 2024-08-14; treat it as a historical fallback, not the current source of truth, and review GPL obligations before reusing code or data.
    - Do not import live inventory, user characters, or account-save contents.
 2. **Screenshot recognition**
    - Validate card-grid detection against representative current Global and Japan screenshots.
