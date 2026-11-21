@@ -48,7 +48,7 @@ object ScreenshotPortraitExtractor {
             val left = (normalizedBounds.left * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
             val top = (normalizedBounds.top * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
             val right = (normalizedBounds.right * bitmap.width).toInt().coerceIn(left + 1, bitmap.width)
-            val bottom = (normalizedBounds.bottom * bitmap.height).toInt().coIn(top + 1, bitmap.height)
+            val bottom = (normalizedBounds.bottom * bitmap.height).toInt().coerceIn(top + 1, bitmap.height)
             val crop = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
             try {
                 val directory = File(profileDirectory, "extracted_portraits").apply { mkdirs() }
