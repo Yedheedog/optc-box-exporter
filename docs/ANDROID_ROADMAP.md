@@ -37,7 +37,7 @@
 5. **Portrait cache integration**
    - Connect the Global cache utility to collection thumbnails and offline display.
    - Verify Japan's actual CDN host/path before enabling Japan downloads.
-   - Use the encrypted Farm Lite auth source only if a validated endpoint actually requires authentication.
+   - Complete the login adapter using the encrypted Farm Lite device profile, then pass the live X-SESSION and matching game-client headers to every portrait CDN request. The portrait cache now rejects requests without X-SESSION.
 6. **JSON export**
    - Export recognized IDs, quantities, metadata, profile/server identity, and schema version.
    - Include portrait assets in a bundle or omit portrait paths; never emit broken relative paths.
