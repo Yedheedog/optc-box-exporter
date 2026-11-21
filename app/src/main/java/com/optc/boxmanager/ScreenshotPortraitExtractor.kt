@@ -3,7 +3,6 @@ package com.optc.boxmanager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Rect
 import android.graphics.RectF
 import java.io.File
 import java.io.FileOutputStream
@@ -48,7 +47,7 @@ object ScreenshotPortraitExtractor {
         try {
             val left = (normalizedBounds.left * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
             val top = (normalizedBounds.top * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
-            val right = (normalizedBounds.right * bitmap.width).toInt().coIn(left + 1, bitmap.width)
+            val right = (normalizedBounds.right * bitmap.width).toInt().coerceIn(left + 1, bitmap.width)
             val bottom = (normalizedBounds.bottom * bitmap.height).toInt().coIn(top + 1, bitmap.height)
             val crop = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
             try {
