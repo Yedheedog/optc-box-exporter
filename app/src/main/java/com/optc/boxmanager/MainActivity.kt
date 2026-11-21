@@ -45,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -88,6 +89,9 @@ private fun BoxManagerScreen() {
     var showAutoExtractPicker by remember { mutableStateOf(false) }
     var showAddCharacter by remember { mutableStateOf(false) }
     var cropScreenshot by remember { mutableStateOf<File?>(null) }
+    var gridCalibrationScreenshot by remember { mutableStateOf<File?>(null) }
+    var gridCalibrationStage by remember { mutableIntStateOf(0) }
+    var calibratedGridBounds by remember { mutableStateOf<RectF?>(null) }
     var cropMessage by remember { mutableStateOf<String?>(null) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -426,31 +430,28 @@ private fun BoxManagerScreen() {
     if (showAutoExtractPicker && selected != null) {
         AlertDialog(
             onDismissRequest = { showAutoExtractPicker = false },
-            title = { Text("Choose screenshot to scan") },
+            title = { Text("Choose screenshot to calibrate") },
             text = {
-                LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                    items(selected.screenshots) { name ->
-                        TextButton(
-                            onClick = {
-                                val profileId = selected.id
-                                val source = File(store.profileDirectory(profileId), name)
-                                showAutoExtractPicker = false
-                                cropMessage = "Scanning card grid in $name…"
-                                scope.launch {
-                                    val result = withContext(Dispatchers.IO) {
-                                        runCatching {
-                                            ScreenshotGridExtractor.extract(context, profileId, source)
-                                        }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("The app will ask you to mark the whole five-column grid, then one complete character tile.")
+                    LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                        items(selected.screenshots) { name ->
+                            TextButton(
+                                onClick = {
+                                    val source = File(store.profileDirectory(selected.id), name)
+                                    showAutoExtractPicker = false
+                                    if (source.isFile && source.length() > 0L) {
+                                        calibratedGridBounds = null
+                                        gridCalibrationStage = 1
+                                        gridCalibrationScreenshot = source
+                                        cropMessage = "Step 1 of 2: select the complete character grid, from the first card edge to the last card edge."
+                                    } else {
+                                        cropMessage = "That imported screenshot is missing or empty. Import it again and retry."
                                     }
-                                    result.onSuccess { files ->
-                                        cropMessage = "Extracted ${files.size} candidate card images from $name. Review the thumbnails below; no character IDs or quantities were assigned."
-                                    }.onFailure { error ->
-                                        cropMessage = "Could not extract card images: ${error.localizedMessage ?: error.javaClass.simpleName}"
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(name) }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(name) }
+                        }
                     }
                 }
             },
@@ -458,6 +459,58 @@ private fun BoxManagerScreen() {
                 TextButton(onClick = { showAutoExtractPicker = false }) { Text("Close") }
             }
         )
+    }
+
+    gridCalibrationScreenshot?.let { screenshot ->
+        val stage = gridCalibrationStage
+        key(stage) {
+            CropReviewDialog(
+                screenshot = screenshot,
+                title = if (stage == 1) "Step 1: Select the whole grid" else "Step 2: Select one complete card",
+                instructions = if (stage == 1) {
+                    "Drag around the full five-column character grid only. Exclude the game header, filter controls, and bottom navigation."
+                } else {
+                    "Drag around exactly one complete character tile, including its outer border and bottom level area. Do not select neighboring cards."
+                },
+                onDismiss = {
+                    gridCalibrationScreenshot = null
+                    gridCalibrationStage = 0
+                    calibratedGridBounds = null
+                },
+                onSave = { bounds ->
+                    if (stage == 1) {
+                        calibratedGridBounds = bounds
+                        gridCalibrationStage = 2
+                        cropMessage = "Step 2 of 2: select one complete card tile inside the grid."
+                    } else {
+                        val profileId = selectedId
+                        val gridBounds = calibratedGridBounds
+                        gridCalibrationScreenshot = null
+                        gridCalibrationStage = 0
+                        calibratedGridBounds = null
+                        if (profileId == null || gridBounds == null) {
+                            cropMessage = "Grid calibration was lost. Please start Auto Extract again."
+                        } else {
+                            cropMessage = "Calibrating five columns and extracting card tiles…"
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        GridCalibrationExtractor.extract(
+                                            context, profileId, screenshot, gridBounds, bounds
+                                        )
+                                    }
+                                }
+                                result.onSuccess { files ->
+                                    cropMessage = "Extracted ${files.size} card tiles using your calibrated five-column grid. Review the thumbnails; no character IDs or quantities were assigned."
+                                }.onFailure { error ->
+                                    cropMessage = "Grid extraction failed: ${error.localizedMessage ?: error.javaClass.simpleName}"
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
     }
 
     cropScreenshot?.let { screenshot ->
@@ -668,6 +721,8 @@ private fun decodeCropPreview(file: File): Bitmap? {
 @Composable
 private fun CropReviewDialog(
     screenshot: File,
+    title: String = "Select portrait area",
+    instructions: String = "Drag over the character portrait. The original screenshot will remain unchanged.",
     onDismiss: () -> Unit,
     onSave: (RectF) -> Unit
 ) {
@@ -714,8 +769,8 @@ private fun CropReviewDialog(
                 Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("Select portrait area", style = MaterialTheme.typography.titleLarge)
-                Text("Drag over the character portrait. The original screenshot will remain unchanged.")
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(instructions)
                 if (imageBitmap != null) {
                     Box(
                         Modifier.fillMaxWidth()
