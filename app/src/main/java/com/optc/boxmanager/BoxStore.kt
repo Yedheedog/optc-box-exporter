@@ -78,7 +78,18 @@ class BoxStore(context: Context) {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    fun profileDirectory(profileId: String) = File(root, profileId).apply { mkdirs() }
+    fun profileDirectory(profileId: String): File {
+        require(profileId.matches(Regex("[A-Za-z0-9-]{1,80}"))) { "Invalid box profile ID." }
+        return File(root, profileId).apply { mkdirs() }
+    }
+
+    fun extractedPortraits(profileId: String): List<File> {
+        val directory = File(profileDirectory(profileId), "extracted_portraits")
+        return directory.listFiles()
+            ?.filter { it.isFile && it.extension.equals("png", ignoreCase = true) }
+            ?.sortedBy { it.name }
+            .orEmpty()
+    }
 
     fun exportJson(profile: BoxProfile): String {
         val screenshots = JSONArray().apply { profile.screenshots.forEach { put(it) } }
