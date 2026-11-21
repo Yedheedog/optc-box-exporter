@@ -44,10 +44,10 @@ class BoxStore(context: Context) {
 
     fun addScreenshots(profileId: String, files: List<File>): Int {
         val directory = profileDirectory(profileId)
-        val knownHashes = directory.listFiles()
-            ?.filter { it.isFile && it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp") }
-            ?.mapNotNull { runCatching { sha256(it) }.getOrNull() }
-            ?.toMutableSet() ?: mutableSetOf()
+        val previousNames = load().firstOrNull { it.id == profileId }?.screenshots.orEmpty()
+        val knownHashes = previousNames
+            .mapNotNull { name -> runCatching { sha256(File(directory, name)) }.getOrNull() }
+            .toMutableSet()
         val accepted = files.filter { file ->
             val hash = runCatching { sha256(file) }.getOrNull()
             if (hash == null || !knownHashes.add(hash)) {
