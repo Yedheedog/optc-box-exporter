@@ -50,7 +50,18 @@ private fun BoxManagerScreen() {
     var selectedId by remember { mutableStateOf(profiles.firstOrNull()?.id) }
     var showCreate by remember { mutableStateOf(false) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
+    var authStatus by remember { mutableStateOf(if (AuthProfileVault.hasProfile(context)) "Encrypted auth source is stored on this device." else "No auth source imported.") }
     val selected = profiles.firstOrNull { it.id == selectedId }
+
+    val authImporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching { AuthProfileVault.import(context, uri) }
+                .onSuccess { authStatus = "Encrypted auth source stored separately from box profiles. Login adapter is not connected yet." }
+                .onFailure { authStatus = "Import failed: ${it.localizedMessage}" }
+        }
+    }
 
     val imagePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -100,6 +111,17 @@ private fun BoxManagerScreen() {
             Text("OPTC Box Manager", style = MaterialTheme.typography.headlineMedium)
             Text("Independent local box profiles • Android")
             Button(onClick = { showCreate = true }) { Text("Add box profile") }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Portrait-download authentication", style = MaterialTheme.typography.titleMedium)
+                    Text("Optional Farm Lite device profile. It is encrypted with Android Keystore and kept outside all box profiles.")
+                    OutlinedButton(onClick = { authImporter.launch(arrayOf("*/*")) }) {
+                        Text("Import auth source file")
+                    }
+                    Text(authStatus)
+                }
+            }
 
             if (profiles.isEmpty()) {
                 Card(Modifier.fillMaxWidth()) {
