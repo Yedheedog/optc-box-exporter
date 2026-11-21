@@ -50,6 +50,7 @@ private fun BoxManagerScreen() {
     var selectedId by remember { mutableStateOf(profiles.firstOrNull()?.id) }
     var showCreate by remember { mutableStateOf(false) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
+    var importMessage by remember { mutableStateOf<String?>(null) }
     var authStatus by remember { mutableStateOf(if (AuthProfileVault.hasProfile(context)) "Encrypted auth source is stored on this device." else "No auth source imported.") }
     val selected = profiles.firstOrNull { it.id == selectedId }
 
@@ -84,8 +85,9 @@ private fun BoxManagerScreen() {
             }
         }
         if (copied.isNotEmpty()) {
-            store.addScreenshots(profile.id, copied)
+            val accepted = store.addScreenshots(profile.id, copied)
             profiles = store.load()
+            importMessage = "Added $accepted unique screenshot(s); exact duplicates were skipped."
         }
     }
 
@@ -169,6 +171,7 @@ private fun BoxManagerScreen() {
                 Text("Recognition status: not connected yet")
                 Text("Screenshots are stored only inside this profile's private app folder.")
             }
+            importMessage?.let { Text(it) }
             exportMessage?.let { Text(it) }
             Spacer(Modifier.height(4.dp))
         }
