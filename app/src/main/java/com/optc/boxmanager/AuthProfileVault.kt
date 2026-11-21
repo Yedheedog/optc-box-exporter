@@ -27,6 +27,7 @@ object AuthProfileVault {
         val plaintext = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: error("The selected file could not be opened.")
         require(plaintext.isNotEmpty()) { "The selected file is empty." }
+        require(plaintext.size <= 64 * 1024) { "The selected auth profile file is unexpectedly large." }
         try {
             val encrypted = encrypt(plaintext)
             try {
