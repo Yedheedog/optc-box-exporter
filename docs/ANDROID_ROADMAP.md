@@ -8,6 +8,7 @@
 - [x] Multi-select Android gallery import.
 - [x] SHA-256 filtering for byte-identical screenshots within one profile.
 - [x] Versioned JSON-only export action and documented schema.
+- [x] Shared static character-reference JSON importer, validated by unique positive server character IDs.
 - [x] Separate encrypted Farm Lite auth-source vault using Android Keystore AES-GCM.
 - [x] Global CDN portrait downloader/cache utility based on Farm Lite's helper URL pattern.
 - [x] Profile-scoped screenshot portrait crop utility that preserves originals and saves validated PNG crops offline.
@@ -18,6 +19,7 @@
 ## Next implementation sequence
 
 1. **Character reference data**
+   - [x] Add an Android importer for the static JSON produced by `tools/import_farm_lite_db.py`; the catalogue is shared across box profiles.
    - Obtain an authorized static export of Farm Lite's MstCharacter_ master table or a verified current OPTC reference source.
    - Preserve the numeric server character ID as the stable key.
    - Record source version/date and license/provenance.
