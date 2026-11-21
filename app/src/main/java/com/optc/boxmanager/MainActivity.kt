@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
 private fun BoxManagerScreen() {
     val context = LocalContext.current
     val store = remember { BoxStore(context) }
+    val referenceStore = remember { CharacterReferenceStore(context) }
     val scope = rememberCoroutineScope()
     var profiles by remember { mutableStateOf(store.load()) }
     var selectedId by remember { mutableStateOf(profiles.firstOrNull()?.id) }
@@ -85,6 +86,8 @@ private fun BoxManagerScreen() {
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
     var authStatus by remember { mutableStateOf(if (AuthProfileVault.hasProfile(context)) "Encrypted auth source is stored on this device." else "No auth source imported.") }
+    var referenceCount by remember { mutableIntStateOf(referenceStore.count()) }
+    var referenceStatus by remember { mutableStateOf(if (referenceCount > 0) "Shared character catalogue loaded." else "No character catalogue imported.") }
     val selected = profiles.firstOrNull { it.id == selectedId }
 
     val authImporter = rememberLauncherForActivityResult(
@@ -94,6 +97,19 @@ private fun BoxManagerScreen() {
             runCatching { AuthProfileVault.storeFromUri(context, uri) }
                 .onSuccess { authStatus = "Encrypted auth source stored separately from box profiles. Login adapter is not connected yet." }
                 .onFailure { authStatus = "Import failed: ${it.localizedMessage}" }
+        }
+    }
+
+    val referenceImporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching { referenceStore.importFromUri(context, uri) }
+                .onSuccess { count ->
+                    referenceCount = count
+                    referenceStatus = "Imported $count static character records. This catalogue is shared by all box profiles."
+                }
+                .onFailure { referenceStatus = "Reference import failed: ${it.localizedMessage}" }
         }
     }
 
@@ -146,6 +162,17 @@ private fun BoxManagerScreen() {
             Text("OPTC Box Manager", style = MaterialTheme.typography.headlineMedium)
             Text("Independent local box profiles • Android")
             Button(onClick = { showCreate = true }) { Text("Add box profile") }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Shared character reference", style = MaterialTheme.typography.titleMedium)
+                    Text("Import a static character catalogue JSON exported from the Farm Lite MstCharacter_ master table. It is shared across profiles and contains no box inventory.")
+                    OutlinedButton(onClick = { referenceImporter.launch(arrayOf("application/json", "text/json", "*/*")) }) {
+                        Text("Import character reference JSON")
+                    }
+                    Text("$referenceCount character records • $referenceStatus")
+                }
+            }
 
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
