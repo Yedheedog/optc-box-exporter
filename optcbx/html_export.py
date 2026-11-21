@@ -7,14 +7,19 @@ from typing import Iterable, Mapping
 def build_box_html(entries: Iterable[Mapping[str, object]]) -> str:
     """Build one offline HTML document; all detected thumbnails are embedded."""
     cards = []
-    for index, entry in enumerate(entries, start=1):
-        name = escape(str(entry.get("name") or "Unknown character"))
-        number = escape(str(entry.get("number") or ""))
-        type_name = escape(str(entry.get("type_") or ""))
+    for entry in entries:
+        raw_name = str(entry.get("name") or "Unknown character")
+        raw_number = str(entry.get("number") or "")
+        raw_type = str(entry.get("type_") or "")
+        name = escape(raw_name)
+        number = escape(raw_number)
+        type_name = escape(raw_type)
         classes = entry.get("class_") or []
         if isinstance(classes, str):
             classes = [classes]
-        class_text = escape(", ".join(str(value) for value in classes))
+        raw_class_text = ", ".join(str(value) for value in classes)
+        class_text = escape(raw_class_text)
+        search_text = " ".join((raw_name, raw_number, raw_type, raw_class_text)).lower()
         stars_value = str(entry.get("stars") or "")
         if stars_value and "★" not in stars_value:
             stars_value += "★"
@@ -28,7 +33,7 @@ def build_box_html(entries: Iterable[Mapping[str, object]]) -> str:
             '<div class="details"><strong>{name}</strong>'
             '<span>#{number} · {type_name} · {stars}</span>'
             '<small>{class_text}</small></div></article>'.format(
-                search=escape(" ".join([name, number, type_name, class_text]).lower(), quote=True),
+                search=escape(search_text, quote=True),
                 image=escape(image, quote=True), name=name, number=number,
                 type_name=type_name, stars=stars, class_text=class_text
             )
