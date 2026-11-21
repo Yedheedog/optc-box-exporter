@@ -20,7 +20,6 @@ object AuthProfileVault {
     private const val KEY_ALIAS = "optc_box_manager_auth_source_v1"
     private const val FILE_NAME = "farm_lite_auth_source.enc"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
-    private const val IV_LENGTH = 12
 
     fun hasProfile(context: Context): Boolean = encryptedFile(context).let { it.exists() && it.length() > 0 }
 
@@ -28,16 +27,22 @@ object AuthProfileVault {
         val plaintext = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: error("The selected file could not be opened.")
         require(plaintext.isNotEmpty()) { "The selected file is empty." }
-        val encrypted = encrypt(plaintext)
-        plaintext.fill(0)
-        val target = encryptedFile(context)
-        val temporary = File(target.parentFile, "${target.name}.tmp")
-        temporary.writeBytes(encrypted)
-        if (!temporary.renameTo(target)) {
-            temporary.copyTo(target, overwrite = true)
-            temporary.delete()
+        try {
+            val encrypted = encrypt(plaintext)
+            try {
+                val target = encryptedFile(context)
+                val temporary = File(target.parentFile, "${target.name}.tmp")
+                temporary.writeBytes(encrypted)
+                if (!temporary.renameTo(target)) {
+                    temporary.copyTo(target, overwrite = true)
+                    temporary.delete()
+                }
+            } finally {
+                encrypted.fill(0)
+            }
+        } finally {
+            plaintext.fill(0)
         }
-        encrypted.fill(0)
     }
 
     private fun encryptedFile(context: Context) =
