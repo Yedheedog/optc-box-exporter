@@ -9,6 +9,7 @@
 - [x] SHA-256 filtering for byte-identical screenshots within one profile.
 - [x] Versioned JSON-only export action and documented schema.
 - [x] Shared static character-reference JSON importer, validated by unique positive server character IDs.
+- [x] Per-profile character collection storage, manual catalogue search/add, duplicate quantity aggregation, and portrait-crop assignment.
 - [x] Separate encrypted Farm Lite auth-source vault using Android Keystore AES-GCM.
 - [x] Global CDN portrait downloader/cache utility based on Farm Lite's helper URL pattern.
 - [x] Profile-scoped screenshot portrait crop utility that preserves originals and saves validated PNG crops offline.
@@ -35,9 +36,10 @@
    - Never merge separate physical copies merely because character IDs match.
    - Put ambiguous matches in a user review queue; never silently discard them.
 4. **Collection UI**
-   - Browse and search by character name and ID.
-   - Group copies by character ID and show quantity badges at the portrait's bottom-right.
-   - Keep different IDs separate even when names are identical.
+   - [x] Browse the per-profile collection and add records by searching the shared static catalogue by character name or ID.
+   - [x] Group manually added copies by exact character ID and show quantity badges at the portrait's bottom-right when a crop is assigned.
+   - [x] Keep different IDs separate even when names are identical.
+   - [ ] Populate the collection automatically from screenshot recognition and overlap review.
 5. **Portrait extraction and cache integration**
    - [x] Connect the screenshot crop utility to a manual visual crop-review screen; automatic card-grid and portrait-region detection remain pending.
    - Connect both extracted portraits and the Global CDN cache utility to collection thumbnails and offline display. Cached CDN portraits can now be read offline without a live session.
