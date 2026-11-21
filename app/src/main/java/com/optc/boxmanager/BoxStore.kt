@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
+import java.security.MessageDigest
 
 data class BoxProfile(
     val id: String,
@@ -41,12 +42,40 @@ class BoxStore(context: Context) {
         return profile
     }
 
-    fun addScreenshots(profileId: String, files: List<File>) {
-        val profiles = load().map { profile ->
-            if (profile.id != profileId) profile else
-                profile.copy(screenshots = profile.screenshots + files.map { it.name })
+    fun addScreenshots(profileId: String, files: List<File>): Int {
+        val directory = profileDirectory(profileId)
+        val knownHashes = directory.listFiles()
+            ?.filter { it.isFile && it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp") }
+            ?.mapNotNull { runCatching { sha256(it) }.getOrNull() }
+            ?.toMutableSet() ?: mutableSetOf()
+        val accepted = files.filter { file ->
+            val hash = runCatching { sha256(file) }.getOrNull()
+            if (hash == null || !knownHashes.add(hash)) {
+                file.delete()
+                false
+            } else true
         }
-        save(profiles)
+        if (accepted.isNotEmpty()) {
+            val profiles = load().map { profile ->
+                if (profile.id != profileId) profile else
+                    profile.copy(screenshots = profile.screenshots + accepted.map { it.name })
+            }
+            save(profiles)
+        }
+        return accepted.size
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(16 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     fun profileDirectory(profileId: String) = File(root, profileId).apply { mkdirs() }
