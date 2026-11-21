@@ -120,3 +120,15 @@
         margin-left: 0;
     }
 }
+
+.export-panel{max-width:900px;margin:2rem auto;padding:1.25rem;border:1px solid #ddd;border-radius:12px;background:#fff;color:#222}
+.export-panel h2{margin-top:0}.export-panel label{display:block;margin:1rem 0 .4rem;font-weight:600}
+.export-panel input[type=file]{display:block;width:100%;padding:.6rem;border:1px solid #bbb;border-radius:6px}
+.export-panel input[type=range]{width:100%}
+#export-btn{margin-top:1.2rem;padding:.8rem 1.2rem;border:0;border-radius:7px;background:#243b53;color:#fff;font-weight:600;cursor:pointer}
+#export-btn:disabled{opacity:.5;cursor:not-allowed}
+#export-status{min-height:1.5rem;margin-top:1rem}
+.preview-list{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+.preview-item{display:flex;align-items:center;gap:.5rem;max-width:220px;padding:.4rem;border:1px solid #ddd;border-radius:7px;font-size:.85rem}
+.preview-item img{width:54px;height:54px;object-fit:cover;border-radius:4px}
+.preview-item span{overflow-wrap:anywhere}
