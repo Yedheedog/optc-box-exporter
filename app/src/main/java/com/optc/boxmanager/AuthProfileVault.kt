@@ -24,7 +24,7 @@ object AuthProfileVault {
 
     fun hasProfile(context: Context): Boolean = encryptedFile(context).let { it.exists() && it.length() > 0 }
 
-    fun import(context: Context, uri: Uri) {
+    fun storeFromUri(context: Context, uri: Uri) {
         val plaintext = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: error("The selected file could not be opened.")
         require(plaintext.isNotEmpty()) { "The selected file is empty." }
